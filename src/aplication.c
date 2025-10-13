@@ -1,0 +1,2 @@
+//llopen() , llread(), llclose()
+
