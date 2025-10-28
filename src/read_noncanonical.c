@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     // TODO: Save the received bytes in a buffer array and print it at the end of the program.
     int nBytesBuf = 0;
     unsigned char buf[256] = {0};
-    int counter = 0;
-    int msg_counter = 0;
+    //int counter = 0;
+    //int msg_counter = 0;
     enum State currentState = Start;
     while (STOP == FALSE)
     {

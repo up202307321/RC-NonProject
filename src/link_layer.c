@@ -47,13 +47,14 @@ int llwrite(const unsigned char *buf, int bufSize){
     //retransmission
 
 
-
+/*
     int tentativas = 0;
-    while(tentativas <connectionParameters.nRetransmissions ){
+    while(tentativas < connectionParameters.nRetransmissions ){
 
     }
     return 0;
 }
+*/
 
 ////////////////////////////////////////////////
 // LLREAD
@@ -75,4 +76,7 @@ int llclose()
     // TODO: Implement this function
 
     return 0;
+}
+
+
 }

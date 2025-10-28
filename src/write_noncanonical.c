@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     printf("Serial port %s opened\n", serialPort);
 
     // Create string to send
-    unsigned char buf[BUF_SIZE] = {0};
+    unsigned char buf[BUF_SIZE] = {0}; //buf_size é 5
 
     //for (int i = 0; i < BUF_SIZE; i++)
     //{
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
         
         int nBytesBuf = 0;
         // Enquanto o alarme não apita
-        while(alarmEnabled == TRUE){
+        while(alarmEnabled == TRUE){ //espera pela UA
             unsigned char byte;
             int bytes = readByteSerialPort(&byte);
             nBytesBuf += bytes;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
             if (nBytesBuf == 6)
             {
                 printf("Received 5 bytes. Stop reading from serial port.\n");
-                STOP = TRUE;
+                STOP = TRUE; //recebeu 
                 break;
             }
         }
