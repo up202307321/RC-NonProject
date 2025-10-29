@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     // TODO: Save the received bytes in a buffer array and print it at the end of the program.
     int nBytesBuf = 0;
     unsigned char buf[256] = {0};
-    //int counter = 0;
-    //int msg_counter = 0;
+    int counter = 0;
+    int msg_counter = 0;
     enum State currentState = Start;
     while (STOP == FALSE)
     {
@@ -121,10 +121,10 @@ int main(int argc, char *argv[])
                 if (byte == 0x7e) currentState = Final;
                 else currentState = Start;
             case Final:
-                STOP = TRUE;
+                STOP = TRUE;  //escrever UA
                 buf[0] = 0x7e;
                 buf[1] = 0x03;
-                buf[2] = 0x07;
+                buf[2] = 0x07; 
                 buf[3] = buf [1] ^ buf[2];
                 buf[4] = 0x7e;        
                 writeBytesSerialPort(buf, BUF_SIZE);

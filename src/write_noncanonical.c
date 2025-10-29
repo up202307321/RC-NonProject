@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
 #define FALSE 0
@@ -77,10 +78,7 @@ int main(int argc, char *argv[])
     buf[0] = 0x7E;
     buf[1] = 0x03;
     buf[2] = 0x07;
-
     buf[3] = buf[1] ^ buf[2];
-    
-    
     buf[4] = 0x7E;
     
 
@@ -97,6 +95,7 @@ int main(int argc, char *argv[])
     while(STOP == FALSE){
         
         // Faz escrita 
+        
         int bytes = writeBytesSerialPort(buf, BUF_SIZE);
         printf("%d bytes written to serial port\n", bytes);
         
