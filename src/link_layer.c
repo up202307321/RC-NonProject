@@ -2,7 +2,6 @@
 
 #include "link_layer.h"
 #include "serial_port.h"
-
 // MISC
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
@@ -29,7 +28,8 @@ enum State {
     XOR,
     Final
 };
-
+LinkLayer conectionParameters; //global
+int Ns = 0;//variavel global  (alternando entre 0 e 1)
 
 int llopen(LinkLayer connectionParameters){
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);//abrir serial port
@@ -195,7 +195,7 @@ int llwrite(const unsigned char *buf, int bufSize){
     unsigned char frame[bufSize + 6];
     frame[0] = 0x7E;//F
     frame[1] = 0x03;//A
-    frame[2] = 0x00;//C
+    frame[2] = (Ns == 0) ? 0x00 : 0x40;//C  0x00 é  I frame com Ns = 0 e 0x40 é I frame com Ns = 1
     frame[3] = frame[1] ^ buf[2]; //BCCI
 
     for (int i = 0; i< bufSize; i++){
@@ -204,7 +204,81 @@ int llwrite(const unsigned char *buf, int bufSize){
     
     }
     frame[bufSize+4]= bcc2;
-    frame[bufSize +6]= 0x7E;
+    frame[bufSize +5]= 0x7E;
+    ///////////////////////////////////////////////////
+    
+
+    int tentativas = 0;
+    int ack= 0;
+    int RR=0; //resposta positiva do recetor
+    int REJ=0; //resposta negativa do recetor
+    while(tentativas < conectionParameters.nRetransmissions && RR==0 ){
+        writeBytesSerialPort(&frame , bufSize+6);
+        alarm(conectionParameters.timeout);
+        unsigned char byte; //armarzena o dado do byte lido
+        enum State currentstate = Start;
+
+        int bytes = readByteSerialPort(&byte); //aramazena o sucesso da leitura (0 ou 1)  
+        ////////////////////////////////////////////////ver respota do recetor////////////////////////////////////////////////
+        if(bytes > 0){//indica que o byte foi lido    
+            switch(currentstate){ 
+                case Start:
+                    if (byte == 0x7E){//flag
+                        currentstate = FLAG;
+                        break;
+                    }
+                case FLAG:
+                    if (byte == 0x03)//A
+                    currentstate = A;
+                    else if (byte !=0x7E){
+                        currentstate = Start; //o voltar para Start, o código descarta bytes inválidos e espera pela próxima flag 0x7E
+                        break;
+                    }
+                case A:
+                    if (byte == (Ns == 0 ? 0x05 : 0x85)){ //C//“O valor recebido (byte) é igual ao valor que eu esperava para um RR válido?”
+                        RR = 1;  //proxima trama espera  -> byte == 0x85 → RR(1)
+                        currentstate = C ;
+                    } 
+                    else if (byte == (Ns == 0 ? 0x01 : 0x81)) //verifca se é uma rejeicao 
+                        currentstate = C;  //0x01 → REJ(0),  0x81 → REJ(1)
+
+                    else if (byte == 0x7E) currentstate = FLAG;
+
+                    else currentstate = Start;
+                        break;
+
+                case C:
+                    if (byte == 0x03 ^ (Ns == 0 ? 0x05 : 0x85 )) currentstate = XOR; //volta para o inicio
+                    else currentstate = Start;
+                        break;
+                case XOR:
+                    if (byte == 0x7E) { //e o final
+                        currentstate = Final;
+                        break;
+                    }
+                    else currentstate = Start;       
+                }
+
+
+
+                if(RR||REJ){
+                    ack = 1;
+                }
+             }
+        }
+        if(tentativas>0){tentativas++;}
+
+        else if (rek)
+
+
+    }
+
+    if (ack ==1){
+        Ns = 1;
+        return 
+    }
+    else{return -1;}
+
 
 
     //retransmission
