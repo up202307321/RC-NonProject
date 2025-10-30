@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     //}
 
     // In non-canonical mode, '\n' does not end the writing.
-    // Test this condition by placing a '\n' in the middle of the buffer.
+    // Test this condition by placing a '\n' in the middle of the buff
     // The whole buffer must be sent even with the '\n'.
     //buf[5] = '\n';
 

@@ -30,6 +30,7 @@ enum State {
 };
 LinkLayer conectionParameters; //global
 int Ns = 0;//variavel global  (alternando entre 0 e 1)
+int timeout =0; 
 
 int llopen(LinkLayer connectionParameters){
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);//abrir serial port
@@ -190,7 +191,7 @@ int llopen(LinkLayer connectionParameters){
 ////////////////////////////////////////////////
 int llwrite(const unsigned char *buf, int bufSize){
     unsigned char bcc2 = 0x00;
-    
+
     ///////////criar frame de informação////////////////
     unsigned char frame[bufSize + 6];
     frame[0] = 0x7E;//F
@@ -205,80 +206,97 @@ int llwrite(const unsigned char *buf, int bufSize){
     }
     frame[bufSize+4]= bcc2;
     frame[bufSize +5]= 0x7E;
-    ///////////////////////////////////////////////////
-    
+
+    //////////////PREPARAR ALARM////////////////
+    struct sigaction act = {0};
+    act.sa_handler = &alarmHandler;
+    if (sigaction(SIGALRM, &act, NULL) == -1)
+    {
+        perror("sigaction");
+        exit(1);
+    }
+    ////////////////////////////////////////////
 
     int tentativas = 0;
-    int ack= 0;
     int RR=0; //resposta positiva do recetor
     int REJ=0; //resposta negativa do recetor
+
     while(tentativas < conectionParameters.nRetransmissions && RR==0 ){
         writeBytesSerialPort(&frame , bufSize+6);
-        alarm(conectionParameters.timeout);
         unsigned char byte; //armarzena o dado do byte lido
         enum State currentstate = Start;
+        
+        /////ativar alarm//////
+        alarm(conectionParameters.timeout);
+        alarmEnabled=TRUE;
+        
 
-        int bytes = readByteSerialPort(&byte); //aramazena o sucesso da leitura (0 ou 1)  
-        ////////////////////////////////////////////////ver respota do recetor////////////////////////////////////////////////
-        if(bytes > 0){//indica que o byte foi lido    
-            switch(currentstate){ 
-                case Start:
-                    if (byte == 0x7E){//flag
-                        currentstate = FLAG;
-                        break;
+        //////////////ver respota do recetor///////////
+        while(alarmEnabled == TRUE && RR ==0 && REJ == 0){ 
+            int bytes = readByteSerialPort(&byte); //aramazena o sucesso da leitura (0 ou 1)  
+            if(bytes > 0){//indica que o byte foi lido    
+                switch(currentstate){ 
+                    case Start:
+                        if (byte == 0x7E){//flag
+                            currentstate = FLAG;
+                            break;
+                        }
+                    case FLAG:
+                        if (byte == 0x03)//A
+                        currentstate = A;
+                        else if (byte !=0x7E){
+                            currentstate = Start; //o voltar para Start, o código descarta bytes inválidos e espera pela próxima flag 0x7E
+                            break;
+                        }
+                    case A:
+                        if (byte == (Ns == 0 ? 0x05 : 0x85)){ //C//“O valor recebido (byte) é igual ao valor que eu esperava para um RR válido?”
+                            RR = 1;  //proxima trama espera  -> byte == 0x85 → RR(1)
+                            currentstate = C ;
+                        } 
+                        else if (byte == (Ns == 0 ? 0x01 : 0x81)){ //verifca se é uma rejeicao 
+                            REJ = 1;
+                            currentstate = C;  //0x01 → REJ(0),  0x81 → REJ(1)
+                        }
+                        else if (byte == 0x7E) currentstate = FLAG;
+
+                        else currentstate = Start;
+                            break;
+
+                    case C:
+                        if (byte == 0x03 ^ (Ns == 0 ? 0x05 : 0x85 )) currentstate = XOR; //volta para o inicio
+                        else currentstate = Start;
+                            break;
+                    case XOR:
+                        if (byte == 0x7E) { //e o final
+                            currentstate = Final;      
+                        }
+
+                        else currentstate = Start;
+                        break;       
                     }
-                case FLAG:
-                    if (byte == 0x03)//A
-                    currentstate = A;
-                    else if (byte !=0x7E){
-                        currentstate = Start; //o voltar para Start, o código descarta bytes inválidos e espera pela próxima flag 0x7E
-                        break;
-                    }
-                case A:
-                    if (byte == (Ns == 0 ? 0x05 : 0x85)){ //C//“O valor recebido (byte) é igual ao valor que eu esperava para um RR válido?”
-                        RR = 1;  //proxima trama espera  -> byte == 0x85 → RR(1)
-                        currentstate = C ;
-                    } 
-                    else if (byte == (Ns == 0 ? 0x01 : 0x81)) //verifca se é uma rejeicao 
-                        currentstate = C;  //0x01 → REJ(0),  0x81 → REJ(1)
 
-                    else if (byte == 0x7E) currentstate = FLAG;
-
-                    else currentstate = Start;
-                        break;
-
-                case C:
-                    if (byte == 0x03 ^ (Ns == 0 ? 0x05 : 0x85 )) currentstate = XOR; //volta para o inicio
-                    else currentstate = Start;
-                        break;
-                case XOR:
-                    if (byte == 0x7E) { //e o final
-                        currentstate = Final;
-                        break;
-                    }
-                    else currentstate = Start;       
                 }
-
-
-
-                if(RR||REJ){
-                    ack = 1;
-                }
-             }
+            }
+        
+            if(RR){
+                alarm(0); //desligar o alarm pois ja nao tamos a contar o tempo apra ler o ack
+                Ns = 1-Ns;
+                return bufSize;
+            }
+            else if (REJ){
+                alarm(0); //desligar o alarm pois ja nao tamos a contar o tempo apra ler o ack
+                tentativas++;
+                    
+            }
+            else if (alarmEnabled == FALSE && RR==0){//ninguem respondeu dentro do limite do timeout
+                  tentativas++;
+            }
+            
         }
-        if(tentativas>0){tentativas++;}
 
-        else if (rek)
-
-
+        return -1;
+    
     }
-
-    if (ack ==1){
-        Ns = 1;
-        return 
-    }
-    else{return -1;}
-
 
 
     //retransmission
@@ -316,7 +334,7 @@ int llclose()
 }
 
 
-}
+
 
 void alarmHandler(int signal)
 {
