@@ -138,7 +138,6 @@ int llopen(LinkLayer connectionParameters){
 
         while(SETrecebido == 0){ //aguarda o frame SET
             int bytes = readByteSerialPort(&byte);
-            printf("%x\n", byte);
             if(bytes > 0){
                 switch(currentstate){
                         case Start:
@@ -168,7 +167,7 @@ int llopen(LinkLayer connectionParameters){
                             if (byte == 0x7e) { //e o final
                                 currentstate = Final;
                                 SETrecebido=1;
-                                printf("done\n");
+                                
                             }
                             else {currentstate = Start;}    
                             break;
@@ -186,7 +185,6 @@ int llopen(LinkLayer connectionParameters){
         UAframe[3] = UAframe[1] ^ UAframe[2];
         UAframe[4] = 0x7E;
         writeBytesSerialPort(UAframe, 5);
-        printf("se  t recebido, UA enviado. \n");
         return fd;
     }
     return -1;
@@ -205,7 +203,6 @@ int llwrite(const unsigned char *buf, int bufSize){
     frame[1] = 0x03;//A
     frame[2] = (Ns == 0) ? 0x00 : 0x40;//C  0x00 é  I frame com Ns = 0 e 0x40 é I frame com Ns = 1
     frame[3] = frame[1] ^ frame[2]; //BCCI
-    printf("Frame feito\n");
     int k = 4;
 
     for (int i = 0; i< bufSize; i++){
@@ -231,7 +228,6 @@ int llwrite(const unsigned char *buf, int bufSize){
     }
     else {frame[k++] = bcc2;}
     frame[k++]= 0x7E;
-    printf("Stuffing feito\n");
     ///////////////////////////////////////////////////
     
     alarmCount = 0;
@@ -247,11 +243,9 @@ int llwrite(const unsigned char *buf, int bufSize){
         int done = 0;
         while (alarmEnabled && done == 0){ //enquanto alarm estiver ativado e ainda nao tiver recebido resposta
             
-            //printf("2");
             int bytes = readByteSerialPort(&byte); //aramazena o sucesso da leitura (0 ou 1)  
 
             if(bytes==0){
-                //printf("erro a ler byte \n");
             }
             ////////////////////////////////////////////////ver respota do recetor////////////////////////////////////////////////
             if(bytes > 0){//indica que o byte foi lido   
@@ -261,7 +255,6 @@ int llwrite(const unsigned char *buf, int bufSize){
                         if (byte == 0x7E){//flag
                             currentstate = FLAG;
                         }
-                        //printf("Checkpoint 1\n");
                         break;
                     case FLAG:
                         if (byte == 0x03)//A
@@ -269,10 +262,8 @@ int llwrite(const unsigned char *buf, int bufSize){
                         else if (byte !=0x7E){
                             currentstate = Start; //o voltar para Start, o código descarta bytes inválidos e espera pela próxima flag 0x7E
                         }
-                        //printf("Checkpoint 2\n");
                         break;
                     case A:
-                        //printf("NS: %d, byte: %x\n", Ns, byte);
                         if (byte == (Ns == 0 ?  0x85 : 0x05)){ //C//“O valor recebido (byte) é igual ao valor que eu esperava para um RR válido?”
                             RR = 1;  //proxima trama espera  -> byte == 0x85 → RR(1)
                             currentstate = C ;
@@ -283,13 +274,11 @@ int llwrite(const unsigned char *buf, int bufSize){
                         else if (byte == 0x7E) currentstate = FLAG;
 
                         else {currentstate = Start;}
-                        //printf("Checkpoint 3\n");
                         break;
 
                     case C:
                         if (byte == (0x03 ^ (Ns == 0 ? 0x85 : 0x05 ))) currentstate = XOR; //volta para o inicio
                         else {currentstate = Start;}
-                        //printf("Checkpoint 4\n");
                         break;
                     case XOR:
                         if (byte == 0x7E) { //e o final
@@ -297,10 +286,8 @@ int llwrite(const unsigned char *buf, int bufSize){
                             currentstate = Final;
                         }
                         else {currentstate = Start;}
-                        //printf("Checkpoint 5\n");
                         break;
                     default:
-                    printf("Deu Mal\n");
                         break;       
                     }
                 }
@@ -309,7 +296,6 @@ int llwrite(const unsigned char *buf, int bufSize){
         alarm(0);
         if (RR) {
             Ns = 1 - Ns;
-            //printf("bufsize:%d\n", bufSize);
             return bufSize;
         }
         else if (REJ) {
@@ -432,12 +418,10 @@ int llread(unsigned char *packet) {
     unsigned char received_bcc2 = destuffed[destuffedIndex - 1];
     destuffedIndex--; // exclude BCC2 from data
 
-    //printf("BBC2: %x\n", received_bcc2);
     // Compute BCC2
     bcc2 = 0x00;
     for (int j = 0; j < destuffedIndex; j++) {
         bcc2 ^= destuffed[j];
-        //printf("%x ", destuffed[j]);
     }
     //printf("\n");
     if (bcc2 == received_bcc2) {
@@ -459,7 +443,6 @@ int llread(unsigned char *packet) {
         writeBytesSerialPort(RR, 5);
 
         // Copy data to packet
-        //printf("got here2\n");
         memcpy(packet, destuffed, destuffedIndex);
         Ns = 1 - Ns; // toggle Ns
         return destuffedIndex;
@@ -467,7 +450,6 @@ int llread(unsigned char *packet) {
         // BCC2 error → send REJ(Ns)
         unsigned char REJ[5] = {0x7E, 0x03, (Ns_received == 0 ? 0x81 : 0x01), 0x00, 0x7E};
         REJ[3] = REJ[1] ^ REJ[2];
-                    //printf("got here3\n");
         writeBytesSerialPort(REJ, 5);
         return -1;
     }

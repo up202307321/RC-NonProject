@@ -26,7 +26,6 @@
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename){
 
 
-    printf("application %d\n", nTries);
     LinkLayer connectionParameters;
     strcpy(connectionParameters.serialPort, serialPort);
     connectionParameters.baudRate= baudRate;
