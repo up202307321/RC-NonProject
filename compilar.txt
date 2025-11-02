@@ -1,0 +1,24 @@
+📁 src/
+ ├── link_layer.c     ← o teu protocolo (llopen, llwrite, llread, llclose)
+ ├── main.c           ← a aplicação (usa as funções do teu protocolo)
+ ├── cable_app.c      ← o “cabo virtual” (simula ligação física)
+ ├── serial_port/     ← funções auxiliares para abrir e ler a porta série
+
+
+gcc -Wall -o bin/cable cable/cable.c  //criar executavel cable na pasta bin
+ 
+sudo make run_cable               -------> Cria duas portas virtuais: /dev/ttyS10  ↔  /dev/ttyS11
+
+compilar os programas (ex: make read_noncanonical.c):
+-make run_rx
+-make run_tx
+ 
+
+
+abrir + 2 terminais:
+
+1º terminal (roda o recetor - Abre a porta /dev/ttyS11):
+./read_noncanonical /dev/ttyS11
+
+2º terminal (roda o emisor - Abre a porta /dev/ttyS10 - Escreve os bytes definidos no buf[] - fecha a porta ):
+./write_noncanonical /dev/ttyS10
